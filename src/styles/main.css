@@ -1,0 +1,446 @@
+/* Robot Works — dark industrial control-room theme.
+   Palette: deep charcoal panels, steel borders, restrained amber accent,
+   warning amber for bottleneck. No gradients-as-decoration, no neon. */
+
+:root {
+  --bg: #0e1114;
+  --bg-panel: #171c21;
+  --bg-raised: #1f262d;
+  --bg-inset: #0a0d10;
+  --steel: #2c353e;
+  --steel-light: #3d4954;
+  --text: #d5dbe2;
+  --text-dim: #8b96a1;
+  --amber: #e8a33d;
+  --amber-dim: #9a6c26;
+  --green: #6fbf73;
+  --red: #d9534f;
+  --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 1.45;
+  min-width: 960px;
+}
+
+.app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ---------- Header ---------- */
+
+.header {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--bg-panel);
+  border: 1px solid var(--steel);
+  border-top: 3px solid var(--amber);
+  border-radius: 6px;
+  padding: 14px 22px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.header-logo {
+  color: var(--amber);
+  font-size: 22px;
+  align-self: center;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+}
+
+.header-sub {
+  color: var(--text-dim);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header-stats {
+  display: flex;
+  gap: 28px;
+  margin: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 110px;
+  padding-left: 20px;
+  border-left: 1px solid var(--steel);
+}
+
+.stat:first-child {
+  border-left: none;
+}
+
+.stat dt {
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.stat dd {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-credits {
+  color: var(--amber);
+}
+
+/* ---------- Production line layout ---------- */
+
+.line {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.line-segment {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- Machine card ---------- */
+
+.machine {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--steel);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.machine-bottleneck {
+  border-color: var(--amber-dim);
+  box-shadow: 0 0 0 1px var(--amber-dim), 0 0 14px rgba(232, 163, 61, 0.12);
+}
+
+.machine-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.machine h2 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.status-badge {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--steel-light);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.status-running {
+  color: var(--green);
+  border-color: rgba(111, 191, 115, 0.4);
+}
+
+.status-waiting {
+  color: var(--text-dim);
+}
+
+.status-bottleneck {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+  background: rgba(232, 163, 61, 0.08);
+}
+
+/* Machine body: inset "machinery" well with a pulsing core while processing. */
+
+.machine-body {
+  position: relative;
+  height: 92px;
+  background: var(--bg-inset);
+  border: 1px solid var(--steel);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.machine-core {
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  background: var(--steel-light);
+  border: 1px solid var(--steel);
+}
+
+.machine-active .machine-core {
+  background: var(--amber-dim);
+  border-color: var(--amber);
+  animation: machine-pulse var(--pulse-duration, 1s) ease-in-out infinite;
+}
+
+@keyframes machine-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 163, 61, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 14px 3px rgba(232, 163, 61, 0.35);
+  }
+}
+
+.machine-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--steel);
+}
+
+.machine-progress-fill {
+  height: 100%;
+  background: var(--amber);
+  transform-origin: left center;
+  transition: transform 90ms linear;
+}
+
+.machine-stats {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+}
+
+.machine-stats > div {
+  flex: 1;
+  background: var(--bg-raised);
+  border: 1px solid var(--steel);
+  border-radius: 4px;
+  padding: 6px 9px;
+}
+
+.machine-stats dt {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.machine-stats dd {
+  margin: 1px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Upgrade button ---------- */
+
+.upgrade-btn {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 9px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--amber-dim);
+  background: rgba(232, 163, 61, 0.1);
+  color: var(--amber);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.upgrade-btn:hover:not(:disabled) {
+  background: rgba(232, 163, 61, 0.22);
+}
+
+.upgrade-btn:disabled {
+  border-color: var(--steel);
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
+
+.upgrade-hint {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--red);
+  margin-top: 2px;
+}
+
+/* ---------- Conveyor ---------- */
+
+.conveyor {
+  position: relative;
+  width: 72px;
+  flex: none;
+  align-self: center;
+  height: 40px;
+}
+
+.conveyor-belt {
+  position: absolute;
+  inset: 8px 4px;
+  background-color: var(--bg-inset);
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--steel-light) 0 8px,
+    transparent 8px 20px
+  );
+  border: 1px solid var(--steel);
+  border-radius: 3px;
+  animation: belt-scroll 2s linear infinite;
+}
+
+@keyframes belt-scroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 40px 0;
+  }
+}
+
+.conveyor-frame {
+  position: absolute;
+  inset: 0;
+  border-top: 2px solid var(--steel-light);
+  border-bottom: 2px solid var(--steel-light);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* ---------- Shipping dock ---------- */
+
+.dock {
+  flex: none;
+  width: 180px;
+  margin-left: 20px;
+  background: var(--bg-panel);
+  border: 1px solid var(--steel);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  align-self: stretch;
+}
+
+.dock h2 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.dock-count {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dock-lights {
+  display: flex;
+  gap: 6px;
+}
+
+.dock-lights span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--steel-light);
+}
+
+.dock-active .dock-lights span {
+  background: var(--green);
+  animation: dock-blink 1.2s ease-in-out infinite;
+}
+
+.dock-active .dock-lights span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dock-active .dock-lights span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dock-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ---------- Reset control ---------- */
+
+.controls {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.reset-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--steel);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.reset-btn:hover {
+  color: var(--text);
+  border-color: var(--steel-light);
+}
