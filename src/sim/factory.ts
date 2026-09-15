@@ -1,5 +1,5 @@
 import { CREDITS_PER_ROBOT, MACHINE_CONFIG, MACHINE_ORDER, STARTING_CREDITS } from './config';
-import { detectBottleneck, throughput, upgradeCost } from './throughput';
+import { detectBottleneck, detectBottlenecks, lineThroughput, throughput, upgradeCost } from './throughput';
 import type { FactoryState, MachineId, MachineState, UpgradeResult } from './types';
 
 function initialMachine(id: MachineId): MachineState {
@@ -22,7 +22,12 @@ export function createInitialState(): FactoryState {
   };
 }
 
-/** Reset returns a fresh initial state (same values as createInitialState). */
+/**
+ * Reset returns a fresh initial state (same values as createInitialState).
+ * The incoming state is intentionally ignored; the parameter exists so
+ * resetState can be used directly as a React setState updater, which always
+ * passes the previous state.
+ */
 export function resetState(_state: FactoryState): FactoryState {
   return createInitialState();
 }
@@ -87,7 +92,7 @@ export function tick(state: FactoryState, dtSeconds: number): FactoryState {
       }
     }
 
-    next.machines[id] = { id, level: machine.level, progress, active: moved > 0 };
+    next.machines[id] = { ...machine, progress, active: moved > 0 };
   }
 
   return next;
@@ -117,4 +122,4 @@ export function upgrade(state: FactoryState, id: MachineId): UpgradeResult {
 }
 
 /** Re-export so UI and tests have one import site for the pure core. */
-export { detectBottleneck, throughput, upgradeCost };
+export { detectBottleneck, detectBottlenecks, lineThroughput, throughput, upgradeCost };

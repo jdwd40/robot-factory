@@ -473,3 +473,16 @@ body {
   color: var(--text);
   border-color: var(--steel-light);
 }
+
+/* ---------- Accessibility ---------- */
+
+/* Honour the OS reduce-motion preference: all animations here are decorative
+   (machine pulse, belt scroll, item travel, dock blink), so they can stop
+   entirely without losing any information. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+  }
+}

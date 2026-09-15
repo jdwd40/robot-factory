@@ -7,10 +7,12 @@ export interface MachineConfig {
   baseRate: number;
   /** Credits needed for the level 1 → 2 upgrade. */
   baseUpgradeCost: number;
-  /** Next cost = round(baseUpgradeCost * costGrowth ** level). */
+  /** Next cost = round(baseUpgradeCost * costGrowth ** (level - 1)). */
   costGrowth: number;
   /** Input units consumed per unit of output (from the previous buffer). */
   inputPerOutput: number;
+  /** Display name of the input unit this machine consumes. */
+  inputUnit: 'raw' | 'comp' | 'unit';
   /** Buffer this machine outputs into. */
   output: 'components' | 'unfinishedRobots' | 'shipped';
 }
@@ -25,6 +27,7 @@ export const MACHINE_CONFIG: Record<MachineId, MachineConfig> = {
     baseUpgradeCost: 50,
     costGrowth: 1.6,
     inputPerOutput: 2, // 2 raw units per component
+    inputUnit: 'raw',
     output: 'components',
   },
   assembler: {
@@ -34,6 +37,7 @@ export const MACHINE_CONFIG: Record<MachineId, MachineConfig> = {
     baseUpgradeCost: 75,
     costGrowth: 1.6,
     inputPerOutput: 2, // 2 components per unfinished robot
+    inputUnit: 'comp',
     output: 'unfinishedRobots',
   },
   finisher: {
@@ -43,6 +47,7 @@ export const MACHINE_CONFIG: Record<MachineId, MachineConfig> = {
     baseUpgradeCost: 100,
     costGrowth: 1.6,
     inputPerOutput: 1, // 1 unfinished robot per shipped robot
+    inputUnit: 'unit',
     output: 'shipped',
   },
 };

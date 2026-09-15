@@ -1,4 +1,4 @@
-import { throughput } from '../sim/factory';
+import { lineThroughput } from '../sim/factory';
 import type { FactoryState } from '../sim/types';
 
 interface HeaderProps {
@@ -10,7 +10,9 @@ function formatNumber(n: number): string {
 }
 
 export function Header({ state }: HeaderProps) {
-  const perMinute = throughput(state, 'finisher') * 60;
+  // Line output = the co-limiting stage's robot-equivalent rate, not any
+  // single machine's raw capacity (see detectBottlenecks in src/sim).
+  const perMinute = lineThroughput(state) * 60;
   return (
     <header className="header">
       <div className="header-brand">

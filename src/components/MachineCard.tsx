@@ -1,6 +1,6 @@
 import { MACHINE_CONFIG } from '../sim/config';
 import { machineStatus, throughput, upgradeCost } from '../sim/throughput';
-import type { FactoryState, MachineId } from '../sim/types';
+import type { FactoryState, MachineId, MachineStatus } from '../sim/types';
 
 interface MachineCardProps {
   id: MachineId;
@@ -8,7 +8,7 @@ interface MachineCardProps {
   onUpgrade: (id: MachineId) => void;
 }
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL: Record<MachineStatus, string> = {
   RUNNING: 'RUNNING',
   WAITING: 'WAITING',
   BOTTLENECK: '⚠ BOTTLENECK',
@@ -55,7 +55,7 @@ export function MachineCard({ id, state, onUpgrade }: MachineCardProps) {
         <div>
           <dt>Input</dt>
           <dd>
-            {cfg.inputPerOutput} {id === 'fabricator' ? 'raw' : id === 'assembler' ? 'comp' : 'unit'}
+            {cfg.inputPerOutput} {cfg.inputUnit}
           </dd>
         </div>
       </dl>
@@ -67,8 +67,10 @@ export function MachineCard({ id, state, onUpgrade }: MachineCardProps) {
         onClick={() => onUpgrade(id)}
       >
         Upgrade — {cost} cr
-        {!affordable && <span className="upgrade-hint">insufficient credits</span>}
       </button>
+      {/* Outside the disabled button: disabled buttons are not announced by
+          assistive tech, so the reason must live outside to be reachable. */}
+      {!affordable && <span className="upgrade-hint">insufficient credits</span>}
     </section>
   );
 }

@@ -1,4 +1,5 @@
-import { MACHINE_CONFIG, MACHINE_ORDER } from '../sim/config';
+import { MACHINE_ORDER } from '../sim/config';
+import { bufferPressure } from '../sim/throughput';
 import type { FactoryState, MachineId } from '../sim/types';
 import { Conveyor } from './Conveyor';
 import { MachineCard } from './MachineCard';
@@ -8,21 +9,11 @@ interface ProductionLineProps {
   onUpgrade: (id: MachineId) => void;
 }
 
-/** Normalized 0..1 flow for each conveyor, from the buffers it feeds. */
-function conveyorFlow(state: FactoryState, index: number): number {
-  const cap = (id: MachineId) => MACHINE_CONFIG[id].baseRate * state.machines[id].level;
-  if (index === 0) {
-    // Fabricator → Assembler: how well-fed the assembler is relative to demand.
-    return Math.min(1, state.components / Math.max(cap('assembler') * 2, 1));
-  }
-  // Assembler → Finisher.
-  return Math.min(1, state.unfinishedRobots / Math.max(cap('finisher'), 1));
-}
-
-const CONVEYOR_LABELS = [
-  'Components moving from Fabricator to Assembler',
-  'Unfinished robots moving from Assembler to Finisher',
-];
+const CONVEYOR_LABELS: Record<MachineId, string> = {
+  fabricator: '',
+  assembler: 'Components moving from Fabricator to Assembler',
+  finisher: 'Unfinished robots moving from Assembler to Finisher',
+};
 
 export function ProductionLine({ state, onUpgrade }: ProductionLineProps) {
   return (
@@ -31,7 +22,10 @@ export function ProductionLine({ state, onUpgrade }: ProductionLineProps) {
         <div className="line-segment" key={id}>
           <MachineCard id={id} state={state} onUpgrade={onUpgrade} />
           {i < MACHINE_ORDER.length - 1 && (
-            <Conveyor flow={conveyorFlow(state, i)} label={CONVEYOR_LABELS[i]} />
+            <Conveyor
+              flow={bufferPressure(state, MACHINE_ORDER[i + 1])}
+              label={CONVEYOR_LABELS[MACHINE_ORDER[i + 1]]}
+            />
           )}
         </div>
       ))}

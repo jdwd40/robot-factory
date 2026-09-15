@@ -3,13 +3,15 @@ import { CREDITS_PER_ROBOT, MACHINE_CONFIG, MACHINE_ORDER } from '../config';
 import {
   createInitialState,
   detectBottleneck,
+  detectBottlenecks,
+  lineThroughput,
   resetState,
   tick,
   throughput,
   upgrade,
   upgradeCost,
 } from '../factory';
-import { robotEquivalentRate } from '../throughput';
+import { bufferPressure, machineStatus, robotEquivalentRate } from '../throughput';
 import type { FactoryState, MachineId } from '../types';
 
 /** Run `tick` n times with a fixed dt from an initial state. */
@@ -220,12 +222,37 @@ describe('bottleneck detection', () => {
     expect(gains.finisher).toBeLessThan(1); // starved upstream: no gain
   });
 
+  it('flags ALL co-limiting stages at a tie — no zero-gain steering', () => {
+    // At 1/1/2 robot-equivalent rates are fabricator 1.00, assembler 1.00,
+    // finisher 1.60: fabricator and assembler genuinely tie. NO single
+    // upgrade increases production (measured below, all gains ≈ 0), so a
+    // single-badge UI steers the player to a purchase that adds nothing.
+    // The honest answer is to flag every co-limiting stage: the player must
+    // upgrade both together.
+    const state = withLevels({ fabricator: 1, assembler: 1, finisher: 2 });
+    expect(detectBottlenecks(state)).toEqual(['fabricator', 'assembler']);
+    expect(machineStatus(state, 'fabricator')).toBe('BOTTLENECK');
+    expect(machineStatus(state, 'assembler')).toBe('BOTTLENECK');
+    expect(machineStatus(state, 'finisher')).not.toBe('BOTTLENECK');
+
+    const gains = measuredUpgradeGains(state);
+    for (const id of MACHINE_ORDER) {
+      expect(gains[id]).toBeLessThan(1); // measured: no single upgrade helps
+    }
+  });
+
   it('agrees with MEASURED production across a range of level combinations', () => {
-    // For each combination: the machine detectBottleneck reports must be the
-    // one whose +1 upgrade maximally increases robotsShipped over a fixed
-    // 60s warm-up + 60s window at dt=1/60 — the behaviour the UI promises.
+    // For each combination: the flagged bottleneck set must be exactly the
+    // co-limiting stages (their robot-equivalent rate equals the line
+    // minimum), and the UI promise must hold:
+    //  - single bottleneck → its +1 upgrade measurably increases production;
+    //  - tied bottlenecks  → no single upgrade helps, and ALL tied stages are
+    //    flagged so the player sees they must be upgraded together.
+    // This test FAILS against the pre-loop-2 logic at {1,1,2}: the old
+    // tie-break flagged fabricator alone, whose measured gain is 0.
     const combos: Array<Record<MachineId, number>> = [
       { fabricator: 1, assembler: 1, finisher: 1 }, // finisher helps (+12/min)
+      { fabricator: 1, assembler: 1, finisher: 2 }, // tie: f+a co-limit, no single buy helps
       { fabricator: 2, assembler: 1, finisher: 1 }, // finisher helps (+12/min)
       { fabricator: 3, assembler: 2, finisher: 2 }, // finisher helps (+24/min)
       { fabricator: 1, assembler: 3, finisher: 2 }, // fabricator helps (+36/min)
@@ -235,12 +262,63 @@ describe('bottleneck detection', () => {
     for (const levels of combos) {
       const state = withLevels(levels);
       const gains = measuredUpgradeGains(state);
-      // The reported bottleneck must be the measured best upgrade target,
-      // and it must actually help — the game must never steer you to a
-      // purchase that adds nothing.
-      expect(argmaxEarliest(gains)).toBe(detectBottleneck(state));
-      expect(gains[detectBottleneck(state)]).toBeGreaterThan(1);
+      const flagged = detectBottlenecks(state);
+      const minRate = lineThroughput(state);
+      // Exactly the co-limiting stages are flagged — no more, no less.
+      expect(flagged).toEqual(
+        MACHINE_ORDER.filter((id) => robotEquivalentRate(state, id) <= minRate + 1e-9),
+      );
+      expect(detectBottleneck(state)).toBe(flagged[0]);
+      if (flagged.length === 1) {
+        // Single bottleneck: the badge steers the player here, so the
+        // upgrade must measurably pay off — and be the best available buy.
+        expect(gains[flagged[0]]).toBeGreaterThan(1);
+        expect(argmaxEarliest(gains)).toBe(flagged[0]);
+      } else {
+        // Co-limiting tie: honest to the player means showing the whole set,
+        // because no single purchase adds production.
+        for (const id of MACHINE_ORDER) {
+          expect(gains[id]).toBeLessThan(1);
+        }
+      }
     }
+  });
+
+  it('header production/min equals MEASURED shipped-per-minute', () => {
+    // The Header renders lineThroughput(state) * 60. That value must match
+    // what the simulation actually ships over a 60s window (after a 60s
+    // warm-up at dt=1/60) for every combo in the code-review table. The old
+    // header used the finisher's raw capacity (96/min at 1/1/2) — 60% high.
+    const cases: Array<[Record<MachineId, number>, number]> = [
+      [{ fabricator: 1, assembler: 1, finisher: 1 }, 48],
+      [{ fabricator: 1, assembler: 1, finisher: 2 }, 60],
+      [{ fabricator: 1, assembler: 2, finisher: 2 }, 60],
+      [{ fabricator: 2, assembler: 3, finisher: 4 }, 120],
+    ];
+    for (const [levels, expectedPerMin] of cases) {
+      const state = withLevels(levels);
+      expect(lineThroughput(state) * 60).toBeCloseTo(expectedPerMin, 9);
+      const measured = measuredWindowShipped(state);
+      expect(Math.abs(measured - expectedPerMin)).toBeLessThan(1.5);
+    }
+  });
+
+  it('bufferPressure is clamped 0..1, config-driven, and 1 for the raw-fed stage', () => {
+    const state = run(createInitialState(), 10);
+    for (const id of MACHINE_ORDER) {
+      const p = bufferPressure(state, id);
+      expect(p).toBeGreaterThanOrEqual(0);
+      expect(p).toBeLessThanOrEqual(1);
+    }
+    // The first stage draws from unlimited raw material.
+    expect(bufferPressure(state, 'fabricator')).toBe(1);
+    // Demand is throughput × config inputPerOutput — not a hardcoded literal —
+    // so it cannot silently diverge from the simulation's own consumption.
+    const demand = throughput(state, 'assembler') * MACHINE_CONFIG.assembler.inputPerOutput;
+    expect(bufferPressure(state, 'assembler')).toBeCloseTo(
+      Math.min(1, state.components / Math.max(demand, 1)),
+      12,
+    );
   });
 
   it('upgrading the bottleneck measurably improves overall production', () => {
