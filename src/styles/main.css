@@ -26,6 +26,7 @@ html,
 body {
   margin: 0;
   padding: 0;
+  height: 100%;
 }
 
 body {
@@ -38,9 +39,10 @@ body {
 }
 
 .app {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 20px 28px 40px;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -127,8 +129,9 @@ body {
 
 .line {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 0;
+  flex: 1;
 }
 
 .line-segment {
@@ -196,11 +199,12 @@ body {
   background: rgba(232, 163, 61, 0.08);
 }
 
-/* Machine body: inset "machinery" well with a pulsing core while processing. */
+/* Machine body: inset "machinery" well with a pulsing core while processing.
+   Grows with the card so the factory fills the control room. */
 
 .machine-body {
   position: relative;
-  height: 92px;
+  min-height: 340px;
   background: var(--bg-inset);
   border: 1px solid var(--steel);
   border-radius: 4px;
@@ -211,8 +215,8 @@ body {
 }
 
 .machine-core {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 4px;
   background: var(--steel-light);
   border: 1px solid var(--steel);
@@ -317,15 +321,15 @@ body {
 
 .conveyor {
   position: relative;
-  width: 72px;
+  width: 96px;
   flex: none;
   align-self: center;
-  height: 40px;
+  height: 56px;
 }
 
 .conveyor-belt {
   position: absolute;
-  inset: 8px 4px;
+  inset: 10px 4px;
   background-color: var(--bg-inset);
   background-image: repeating-linear-gradient(
     90deg,
@@ -343,6 +347,32 @@ body {
   }
   to {
     background-position: 40px 0;
+  }
+}
+
+/* Discrete items travelling along the belt — visible product flow.
+   Rendered only when the stage is producing (flow > 0); a starved belt
+   is visibly empty. Speed is tied to the same `flow` duration as the belt. */
+
+.conveyor-item {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  background: var(--amber);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(232, 163, 61, 0.5);
+  animation: item-travel 2s linear infinite;
+}
+
+@keyframes item-travel {
+  from {
+    transform: translateX(4px);
+  }
+  to {
+    transform: translateX(82px);
   }
 }
 
@@ -369,7 +399,6 @@ body {
   flex-direction: column;
   justify-content: center;
   gap: 8px;
-  align-self: stretch;
 }
 
 .dock h2 {

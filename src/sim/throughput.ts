@@ -15,14 +15,39 @@ export function upgradeCost(state: FactoryState, id: MachineId): number {
 }
 
 /**
- * The machine that limits overall production: the lowest-throughput stage.
- * Ties resolve to the earliest stage in the line. Never random.
+ * Cumulative downstream input-per-output product from the stage AFTER `id`
+ * through to shipped robots. Converts a stage's output rate into
+ * shipped-robot-equivalents per second so rates are commensurable.
+ */
+function downstreamFactor(id: MachineId): number {
+  const idx = MACHINE_ORDER.indexOf(id);
+  let factor = 1;
+  for (let i = idx + 1; i < MACHINE_ORDER.length; i++) {
+    factor *= MACHINE_CONFIG[MACHINE_ORDER[i]].inputPerOutput;
+  }
+  return factor;
+}
+
+/**
+ * A stage's rate normalised into shipped-robot-equivalents per second:
+ * raw throughput divided by the cumulative input-per-output product of all
+ * downstream stages. Fabricator level 1 = 2.0 comp/s = 1.0 robot-equiv/s
+ * (assembler consumes 2 components per robot).
+ */
+export function robotEquivalentRate(state: FactoryState, id: MachineId): number {
+  return throughput(state, id) / downstreamFactor(id);
+}
+
+/**
+ * The machine that limits overall production: the lowest
+ * shipped-robot-equivalent rate. Ties resolve to the earliest stage in the
+ * line. Never random. Pure.
  */
 export function detectBottleneck(state: FactoryState): MachineId {
   let lowest: MachineId = MACHINE_ORDER[0];
   let lowestRate = Infinity;
   for (const id of MACHINE_ORDER) {
-    const rate = throughput(state, id);
+    const rate = robotEquivalentRate(state, id);
     if (rate < lowestRate) {
       lowestRate = rate;
       lowest = id;

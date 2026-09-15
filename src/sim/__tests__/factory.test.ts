@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CREDITS_PER_ROBOT, MACHINE_ORDER } from '../config';
+import { CREDITS_PER_ROBOT, MACHINE_CONFIG, MACHINE_ORDER } from '../config';
 import {
   createInitialState,
   detectBottleneck,
@@ -9,6 +9,8 @@ import {
   upgrade,
   upgradeCost,
 } from '../factory';
+import { robotEquivalentRate } from '../throughput';
+import type { FactoryState, MachineId } from '../types';
 
 /** Run `tick` n times with a fixed dt from an initial state. */
 function run(initial = createInitialState(), seconds: number, dt = 0.1) {
@@ -18,6 +20,51 @@ function run(initial = createInitialState(), seconds: number, dt = 0.1) {
     state = tick(state, dt);
   }
   return state;
+}
+
+/** Craft a state with specific machine levels (bypasses upgrade costs). */
+function withLevels(levels: Record<MachineId, number>): FactoryState {
+  const state = createInitialState();
+  const machines = { ...state.machines };
+  for (const id of MACHINE_ORDER) {
+    machines[id] = { ...machines[id], level: levels[id] };
+  }
+  return { ...state, machines };
+}
+
+/**
+ * MEASURED production: robots shipped during a 60s window after a 60s warm-up
+ * at dt=1/60 (same protocol QA used). Anchors tests to the simulation's real
+ * behaviour rather than to any formula.
+ */
+function measuredWindowShipped(initial: FactoryState): number {
+  const warm = run(initial, 60, 1 / 60);
+  return run(warm, 60, 1 / 60).robotsShipped - warm.robotsShipped;
+}
+
+/** Measured robots/min during the window for each machine at +1 level. */
+function measuredUpgradeGains(initial: FactoryState): Record<MachineId, number> {
+  const base = measuredWindowShipped(initial);
+  const gains = {} as Record<MachineId, number>;
+  for (const id of MACHINE_ORDER) {
+    const boosted = withLevels({
+      fabricator: initial.machines.fabricator.level,
+      assembler: initial.machines.assembler.level,
+      finisher: initial.machines.finisher.level,
+      [id]: initial.machines[id].level + 1,
+    });
+    gains[id] = measuredWindowShipped(boosted) - base;
+  }
+  return gains;
+}
+
+/** The machine whose gain is maximal; ties resolve to the earliest stage. */
+function argmaxEarliest(gains: Record<MachineId, number>): MachineId {
+  let best: MachineId = MACHINE_ORDER[0];
+  for (const id of MACHINE_ORDER) {
+    if (gains[id] > gains[best]) best = id;
+  }
+  return best;
 }
 
 describe('production flow', () => {
@@ -106,28 +153,94 @@ describe('upgrades', () => {
 });
 
 describe('bottleneck detection', () => {
-  it('identifies the lowest-throughput machine', () => {
-    // base rates: fabricator 2.0, assembler 1.0, finisher 0.8 → finisher.
-    expect(detectBottleneck(createInitialState())).toBe('finisher');
+  it('identifies the stage with the lowest robot-equivalent rate', () => {
+    // Robot-equivalent rates at the initial state (each stage's output
+    // converted to shipped-robot-equivalents via the downstream
+    // input-per-output chain; computed here independently from config):
+    //   fabricator 2.0 comp/s ÷ 2 (assembler eats 2 comp/robot) = 1.00/s
+    //   assembler  1.0/s        ÷ 1                            = 1.00/s
+    //   finisher   0.8/s        ÷ 1                            = 0.80/s ← lowest
+    const state = createInitialState();
+    const downstream = (id: MachineId) => {
+      const idx = MACHINE_ORDER.indexOf(id);
+      let factor = 1;
+      for (let i = idx + 1; i < MACHINE_ORDER.length; i++) {
+        factor *= MACHINE_CONFIG[MACHINE_ORDER[i]].inputPerOutput;
+      }
+      return factor;
+    };
+    for (const id of MACHINE_ORDER) {
+      const level = state.machines[id].level;
+      expect(robotEquivalentRate(state, id)).toBeCloseTo(
+        (MACHINE_CONFIG[id].baseRate * level) / downstream(id),
+        9,
+      );
+    }
+    expect(robotEquivalentRate(state, 'finisher')).toBeLessThan(
+      robotEquivalentRate(state, 'fabricator'),
+    );
+    expect(detectBottleneck(state)).toBe('finisher');
   });
 
-  it('follows level changes: upgrading the bottleneck moves it to the next-slowest', () => {
-    let state = { ...createInitialState(), credits: 10000 };
-    // Rates start 2.0 / 1.0 / 0.8 → finisher.
-    expect(detectBottleneck(state)).toBe('finisher');
+  it('follows level changes: the bottleneck tracks the lowest robot-equivalent rate', () => {
+    // Rates are robot-equivalents/s: fabricator ÷2, assembler ÷1, finisher ÷1.
+    // 1/1/1 → 1.00 / 1.00 / 0.80 → finisher.
+    expect(detectBottleneck(withLevels({ fabricator: 1, assembler: 1, finisher: 1 }))).toBe(
+      'finisher',
+    );
+    // Finisher L2 = 1.60 leaves fabricator and assembler tied at 1.00;
+    // ties resolve to the earliest stage → fabricator.
+    expect(detectBottleneck(withLevels({ fabricator: 1, assembler: 1, finisher: 2 }))).toBe(
+      'fabricator',
+    );
+    // Fabricator L2 = 2.00 equiv → assembler 1.00 is lowest.
+    expect(detectBottleneck(withLevels({ fabricator: 2, assembler: 1, finisher: 2 }))).toBe(
+      'assembler',
+    );
+    // Assembler L2 = 2.00 equiv → finisher 1.60 is lowest.
+    expect(detectBottleneck(withLevels({ fabricator: 2, assembler: 2, finisher: 2 }))).toBe(
+      'finisher',
+    );
+  });
 
-    // Finisher L2 = 1.6 > assembler 1.0 → bottleneck becomes assembler.
-    state = upgrade(state, 'finisher').state;
-    expect(detectBottleneck(state)).toBe('assembler');
-
-    // Assembler L2 = 2.0 → finisher 1.6 is slowest again.
-    state = upgrade(state, 'assembler').state;
-    expect(detectBottleneck(state)).toBe('finisher');
-
-    // Finisher L3 = 2.4 → tie between fabricator and assembler at 2.0;
-    // tie resolves to the earliest stage, fabricator.
-    state = upgrade(state, 'finisher').state;
+  it('flags the fabricator at fabricator=1 assembler=2 finisher=2 — the unit-bug trap', () => {
+    // Raw rates here are 2.0 / 2.0 / 1.6, so the old implementation flagged
+    // the finisher — yet upgrading the finisher adds ZERO production while
+    // upgrading the fabricator adds +36/min (QA section C). Robot-equivalent
+    // rates are 1.0 / 2.0 / 1.6 → fabricator. This test fails against the
+    // old implementation and passes against the fixed one.
+    const state = withLevels({ fabricator: 1, assembler: 2, finisher: 2 });
     expect(detectBottleneck(state)).toBe('fabricator');
+
+    const gains = measuredUpgradeGains(state);
+    expect(gains.fabricator).toBeGreaterThan(gains.assembler + 1);
+    expect(gains.fabricator).toBeGreaterThan(gains.finisher + 1);
+    expect(gains.fabricator).toBeGreaterThan(30); // measured ≈ +36 robots in the window
+    expect(gains.assembler).toBeLessThan(1); // starved upstream: no gain
+    expect(gains.finisher).toBeLessThan(1); // starved upstream: no gain
+  });
+
+  it('agrees with MEASURED production across a range of level combinations', () => {
+    // For each combination: the machine detectBottleneck reports must be the
+    // one whose +1 upgrade maximally increases robotsShipped over a fixed
+    // 60s warm-up + 60s window at dt=1/60 — the behaviour the UI promises.
+    const combos: Array<Record<MachineId, number>> = [
+      { fabricator: 1, assembler: 1, finisher: 1 }, // finisher helps (+12/min)
+      { fabricator: 2, assembler: 1, finisher: 1 }, // finisher helps (+12/min)
+      { fabricator: 3, assembler: 2, finisher: 2 }, // finisher helps (+24/min)
+      { fabricator: 1, assembler: 3, finisher: 2 }, // fabricator helps (+36/min)
+      { fabricator: 1, assembler: 2, finisher: 2 }, // fabricator helps (+36/min)
+      { fabricator: 2, assembler: 3, finisher: 4 }, // fabricator helps (+60/min)
+    ];
+    for (const levels of combos) {
+      const state = withLevels(levels);
+      const gains = measuredUpgradeGains(state);
+      // The reported bottleneck must be the measured best upgrade target,
+      // and it must actually help — the game must never steer you to a
+      // purchase that adds nothing.
+      expect(argmaxEarliest(gains)).toBe(detectBottleneck(state));
+      expect(gains[detectBottleneck(state)]).toBeGreaterThan(1);
+    }
   });
 
   it('upgrading the bottleneck measurably improves overall production', () => {
@@ -136,14 +249,6 @@ describe('bottleneck detection', () => {
     let boosted = upgrade(createInitialState(), 'finisher').state;
     boosted = run(boosted, 20);
     expect(boosted.robotsShipped).toBeGreaterThan(base.robotsShipped);
-  });
-
-  it('is deterministic: never depends on machine order iteration artifacts', () => {
-    for (const id of MACHINE_ORDER) {
-      const s = createInitialState();
-      expect(detectBottleneck(s)).toBe('finisher');
-      void id;
-    }
   });
 });
 
