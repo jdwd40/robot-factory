@@ -94,6 +94,9 @@ function initialStats(): FactoryState['stats'] {
     costPaid: 0,
     repairCost: 0,
     repairCount: 0,
+    refundsReceived: 0,
+    coolSpend: 0,
+    buyoutSpend: 0,
     upgradeSpend: 0,
     upgradeCount: 0,
     breakdowns: 0,
@@ -474,6 +477,7 @@ export function cancelOrder(state: FactoryState, jobId: number): ActionResult {
   const next = structuredClone(state);
   const [job] = next.orders.splice(idx, 1);
   next.credits += job.costPaid;
+  next.stats.refundsReceived += job.costPaid;
   pushLog(next, 'economy', `Cancelled ${ROBOT_CONFIG[job.type].name} #${job.serial} — refunded ${job.costPaid} cr`);
   return { ok: true, state: next };
 }
@@ -573,6 +577,7 @@ export function emergencyCool(state: FactoryState, machineId: MachineId): Action
   }
   const next = structuredClone(state);
   next.credits -= EMERGENCY_COOL_COST;
+  next.stats.coolSpend += EMERGENCY_COOL_COST;
   const mm = next.machines[machineId];
   mm.heat = 0;
   pushLog(next, 'info', `${MACHINE_CONFIG[machineId].name} emergency-cooled — ${EMERGENCY_COOL_COST} cr`);
@@ -597,6 +602,7 @@ export function salvage(state: FactoryState, machineId: MachineId): ActionResult
   mm.currentJob = null;
   mm.progress = 0;
   next.credits += refund;
+  next.stats.refundsReceived += refund;
   pushLog(
     next,
     'economy',
@@ -618,6 +624,7 @@ export function buyOutEvent(state: FactoryState, eventId: number): ActionResult 
   const next = structuredClone(state);
   const [ev] = next.events.splice(idx, 1);
   next.credits -= EVENT_EFFECT.buyoutCost;
+  next.stats.buyoutSpend += EVENT_EFFECT.buyoutCost;
   pushLog(
     next,
     'success',

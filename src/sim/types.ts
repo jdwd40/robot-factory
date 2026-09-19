@@ -123,6 +123,12 @@ export interface FactoryStats {
   costPaid: number;
   repairCost: number;
   repairCount: number;
+  /** Credits refunded by cancelling queued orders or salvaging WIP jobs. */
+  refundsReceived: number;
+  /** Credits spent on emergency-cooling machines. */
+  coolSpend: number;
+  /** Credits spent buying out negative events early. */
+  buyoutSpend: number;
   upgradeSpend: number;
   upgradeCount: number;
   breakdowns: number;

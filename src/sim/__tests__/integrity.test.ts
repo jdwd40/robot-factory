@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addOrder, repair, tick, upgrade } from '../factory';
-import { MACHINE_ORDER, MAX_LOG_ENTRIES } from '../config';
+import { addOrder, buyOutEvent, cancelOrder, emergencyCool, repair, salvage, tick, upgrade } from '../factory';
+import { MACHINE_ORDER, MAX_LOG_ENTRIES, SALVAGE_FRACTION } from '../config';
 import { mulberry32 } from '../random';
 import type { FactoryState } from '../types';
 import { richState, run } from './helpers';
@@ -111,6 +111,71 @@ describe('long-run integrity', () => {
     expect(s.stats.robotsShipped).toBe(10);
     expect(s.stats.lastShipElapsed).toBeGreaterThan(0);
     expect(s.stats.lastShipValue).toBe(55);
+  });
+
+  it('refunds, salvage, buyouts and cooling are all tracked so the money identity holds', () => {
+    // Every source and sink of cash must be visible in the stats, so the
+    // conservation identity from the 20-minute test still holds when the
+    // player cancels, salvages, buys out events or emergency-cools.
+    let s = richState();
+    const start = s.credits;
+    s = addOrder(s, 'worker').state;
+    s = addOrder(s, 'worker').state;
+    const stuckCost = s.orders.find((j) => j.id === s.orders[0].id)!.costPaid;
+    const cancelable = s.orders[1].id;
+    const cancelCost = s.orders[1].costPaid;
+
+    s = run(s, 5, 1, () => 0.99); // fabricator picks the first worker; the second stays queued
+
+    // Salvage: knock the fabricator down with a stuck WIP job.
+    const down = structuredClone(s);
+    down.machines.fabricator.state = 'overheated';
+    down.machines.fabricator.breakdownType = 'overheating';
+    down.machines.fabricator.heat = 1;
+    const sal = salvage(down, 'fabricator');
+    expect(sal.ok).toBe(true);
+    s = sal.state;
+
+    // Cancel the untouched queued order.
+    const can = cancelOrder(s, cancelable);
+    expect(can.ok).toBe(true);
+    s = can.state;
+
+    // Buy out a negative event and emergency-cool a hot machine.
+    s.events.push({ id: 99, type: 'power-surge', remaining: 10, startedAt: 0, data: [] });
+    s.machines.assembler.heat = 0.7;
+    const cool = emergencyCool(s, 'assembler');
+    expect(cool.ok).toBe(true);
+    s = cool.state;
+    const boot = buyOutEvent(s, 99);
+    expect(boot.ok).toBe(true);
+    s = boot.state;
+
+    expect(s.stats.refundsReceived).toBe(
+      Math.round(stuckCost * SALVAGE_FRACTION) + cancelCost,
+    );
+    expect(s.stats.coolSpend).toBe(12);
+    expect(s.stats.buyoutSpend).toBe(120);
+
+    // No job should be silently lost: the salvaged worker and the cancelled
+    // explorer left no live orders or buffers behind.
+    for (const id of MACHINE_ORDER) {
+      const m = s.machines[id];
+      if (id === 'fabricator') expect(m.currentJob).toBeNull();
+    }
+    expect(s.orders.length).toBe(0);
+
+    // The full ledger balances: every credit in and out is accounted for.
+    expect(s.credits).toBe(
+      start +
+        s.stats.revenue -
+        s.stats.costPaid +
+        s.stats.refundsReceived -
+        s.stats.repairCost -
+        s.stats.upgradeSpend -
+        s.stats.coolSpend -
+        s.stats.buyoutSpend,
+    );
   });
 });
 

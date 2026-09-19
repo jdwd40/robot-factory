@@ -24,7 +24,12 @@ export function ReportModal({ state, onClose }: ReportModalProps) {
   }, [onClose]);
 
   const profitPct = s.revenue > 0 ? (s.profit / s.revenue) * 100 : 0;
-  const avgSale = s.robotsShipped > 0 ? s.revenue / s.robotsShipped : 0;
+  // True average sale: bulk-order bonuses inflate total revenue, so derive it
+  // from per-type sale totals instead of `revenue / robotsShipped`.
+  const avgSale =
+    s.robotsShipped > 0
+      ? ROBOT_ORDER.reduce((acc, r) => acc + s.byTypeRevenue[r], 0) / s.robotsShipped
+      : 0;
 
   return (
     <div className="overlay-backdrop" role="presentation" onMouseDown={onClose}>
@@ -127,6 +132,14 @@ export function ReportModal({ state, onClose }: ReportModalProps) {
               <dd>
                 {formatNumber(s.repairCount)} ({formatNumber(s.repairCost)} cr)
               </dd>
+            </div>
+            <div>
+              <dt>Refunds</dt>
+              <dd>{formatNumber(s.refundsReceived)} cr</dd>
+            </div>
+            <div>
+              <dt>Cooling & buyouts</dt>
+              <dd>{formatNumber(s.coolSpend + s.buyoutSpend)} cr</dd>
             </div>
             <div>
               <dt>Upgrades</dt>
