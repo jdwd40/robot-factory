@@ -261,7 +261,7 @@ export function MachineCard({
                   className="upgrade-btn"
                   disabled={maxed || state.credits < cost}
                   onClick={() => onUpgrade(id, track)}
-                  title={t.blurb}
+                  title={unlocks ? `${t.blurb} — ${unlocks}` : t.blurb}
                 >
                   <span className="upgrade-track-name">{t.name}</span>
                   <span className="upgrade-track-level">L{lvl}</span>

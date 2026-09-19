@@ -655,7 +655,7 @@ body {
 
 .machine-upgrades {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -675,6 +675,7 @@ body {
   flex-direction: column;
   gap: 2px;
   align-items: center;
+  min-width: 0;
 }
 
 .upgrade-btn:hover:not(:disabled) {
@@ -689,6 +690,10 @@ body {
 }
 
 .upgrade-track-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
   font-size: 10px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -833,6 +838,10 @@ body {
 }
 
 .upgrade-track-unlock {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 9px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
