@@ -1,35 +1,44 @@
+import { formatNumber } from '../sim/format';
+import type { Job } from '../sim/types';
+import { RobotIcon } from './RobotIcon';
+
 interface ConveyorProps {
-  /** 0..1 how full the downstream flow is — drives belt speed and item rate. */
-  flow: number;
+  /** Jobs currently waiting on the next machine (what the belt is carrying). */
+  jobs: Job[];
+  /** True when the upstream machine is actively pushing product. */
+  active: boolean;
   label: string;
 }
 
-const ITEM_COUNT = 3;
+const SHOWN = 4;
 
 /**
- * Animated conveyor belt between two machines, carrying discrete items.
- * Pure CSS animation: items travel left → right with staggered negative
- * delays so they are spread along the belt. `flow` scales the travel
- * duration, and when the stage is starved (flow ≈ 0) no items render at
- * all — the belt is visibly empty, matching the simulation state.
+ * Animated conveyor between machines, carrying the actual queued units the
+ * simulation has produced. Tokens are the real robot models waiting on the
+ * next machine, so an empty buffer means a visibly empty belt — no fake motion.
  */
-export function Conveyor({ flow, label }: ConveyorProps) {
-  const duration = `${Math.max(0.8, 3 - flow * 2.4).toFixed(2)}s`;
-  const active = flow > 0.02;
+export function Conveyor({ jobs, active, label }: ConveyorProps) {
+  const busy = active && jobs.length > 0;
+  const duration = `${busy ? 1.6 : 2.6}s`;
+  const shown = jobs.slice(0, SHOWN);
   return (
     <div className="conveyor" role="img" aria-label={label}>
-      <div className="conveyor-belt" style={{ animationDuration: duration }} />
-      {active &&
-        Array.from({ length: ITEM_COUNT }, (_, i) => (
-          <div
-            key={i}
-            className="conveyor-item"
-            style={{
-              animationDuration: duration,
-              animationDelay: `${(-(i / ITEM_COUNT) * parseFloat(duration)).toFixed(2)}s`,
-            }}
-          />
-        ))}
+      <div className={`conveyor-belt${busy ? ' belt-moving' : ''}`} />
+      {shown.map((job, i) => (
+        <span
+          key={job.id}
+          className={`conveyor-item${busy ? '' : ' item-idle'}`}
+          style={{
+            animationDuration: duration,
+            animationDelay: busy ? `${(i / SHOWN) * parseFloat(duration)}s` : undefined,
+          }}
+        >
+          <RobotIcon type={job.type} size={16} />
+        </span>
+      ))}
+      {jobs.length > SHOWN && (
+        <span className="conveyor-more">+{formatNumber(jobs.length - SHOWN)}</span>
+      )}
       <div className="conveyor-frame" aria-hidden="true" />
     </div>
   );

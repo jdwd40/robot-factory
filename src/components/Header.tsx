@@ -1,18 +1,17 @@
-import { lineThroughput } from '../sim/factory';
+import { ROBOT_CONFIG, ROBOT_ORDER } from '../sim/config';
+import { formatNumber } from '../sim/format';
 import type { FactoryState } from '../sim/types';
 
 interface HeaderProps {
   state: FactoryState;
+  onToggleSound: () => void;
+  onOpenHelp: () => void;
+  onOpenReport: () => void;
 }
 
-function formatNumber(n: number): string {
-  return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
-}
-
-export function Header({ state }: HeaderProps) {
-  // Line output = the co-limiting stage's robot-equivalent rate, not any
-  // single machine's raw capacity (see detectBottlenecks in src/sim).
-  const perMinute = lineThroughput(state) * 60;
+export function Header({ state, onToggleSound, onOpenHelp, onOpenReport }: HeaderProps) {
+  const robotsPerHour = state.stats.rateEma * 3600;
+  const pending = state.orders.length;
   return (
     <header className="header">
       <div className="header-brand">
@@ -22,20 +21,61 @@ export function Header({ state }: HeaderProps) {
         <h1>ROBOT WORKS</h1>
         <span className="header-sub">Factory Control</span>
       </div>
+
       <dl className="header-stats">
         <div className="stat">
           <dt>Credits</dt>
-          <dd className="stat-credits">{formatNumber(state.credits)}</dd>
+          <dd key={Math.round(state.credits)} className="stat-credits stat-pop">
+            {formatNumber(state.credits)}
+          </dd>
         </div>
         <div className="stat">
-          <dt>Robots Shipped</dt>
-          <dd>{formatNumber(state.robotsShipped)}</dd>
+          <dt>Robots / hr</dt>
+          <dd>{robotsPerHour < 10 ? robotsPerHour.toFixed(1) : formatNumber(robotsPerHour)}</dd>
         </div>
         <div className="stat">
-          <dt>Production / min</dt>
-          <dd>{perMinute.toFixed(1)}</dd>
+          <dt>Shipped</dt>
+          <dd>{formatNumber(state.stats.robotsShipped)}</dd>
+        </div>
+        <div className="stat">
+          <dt>Orders Queued</dt>
+          <dd>{formatNumber(pending)}</dd>
+        </div>
+        <div className="stat stat-roster">
+          <dt>Line Up</dt>
+          <dd className="roster">
+            {ROBOT_ORDER.map((r) => (
+              <span
+                key={r}
+                className="roster-chip"
+                style={{ color: ROBOT_CONFIG[r].color }}
+                title={`${ROBOT_CONFIG[r].name}: ${state.stats.byType[r]} shipped`}
+              >
+                {state.stats.byType[r]}
+              </span>
+            ))}
+          </dd>
         </div>
       </dl>
+
+      <div className="header-actions" role="group" aria-label="Factory actions">
+        <button
+          type="button"
+          className="head-btn"
+          aria-pressed={state.settings.sound}
+          aria-label={state.settings.sound ? 'Disable sound cues' : 'Enable sound cues'}
+          title={state.settings.sound ? 'Sound on' : 'Sound off'}
+          onClick={onToggleSound}
+        >
+          {state.settings.sound ? '🔊' : '🔇'}
+        </button>
+        <button type="button" className="head-btn" onClick={onOpenReport}>
+          Report
+        </button>
+        <button type="button" className="head-btn" aria-label="How to play" onClick={onOpenHelp}>
+          ?
+        </button>
+      </div>
     </header>
   );
 }
