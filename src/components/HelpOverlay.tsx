@@ -12,9 +12,10 @@ import {
 
 interface HelpOverlayProps {
   onClose: () => void;
+  onStartTour?: () => void;
 }
 
-export function HelpOverlay({ onClose }: HelpOverlayProps) {
+export function HelpOverlay({ onClose, onStartTour }: HelpOverlayProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -103,7 +104,12 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
           <h3>Finishing</h3>
           <p>Keep the line fed, repair early, and the credits roll in — or take a breath and pause.</p>
         </div>
-        <footer className="modal-foot">
+        <footer className="modal-foot tour-foot">
+          {onStartTour && (
+            <button type="button" className="head-btn" onClick={onStartTour}>
+              Replay tutorial
+            </button>
+          )}
           <button type="button" className="order-btn" onClick={onClose}>
             Got it
           </button>

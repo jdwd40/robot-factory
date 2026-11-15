@@ -11,27 +11,27 @@ interface ConveyorProps {
 }
 
 const SHOWN = 4;
+/** Horizontal landing position per queue slot, right-to-left facing the machine. */
+const SLOTS = [66, 50, 34, 18];
 
 /**
  * Animated conveyor between machines, carrying the actual queued units the
  * simulation has produced. Tokens are the real robot models waiting on the
  * next machine, so an empty buffer means a visibly empty belt — no fake motion.
+ * A newly finished unit mounts the belt at the far end and glides in to its
+ * queue slot, so the belt visibly "lives" as product flows.
  */
 export function Conveyor({ jobs, active, label }: ConveyorProps) {
   const busy = active && jobs.length > 0;
-  const duration = `${busy ? 1.6 : 2.6}s`;
   const shown = jobs.slice(0, SHOWN);
   return (
     <div className="conveyor" role="img" aria-label={label}>
       <div className={`conveyor-belt${busy ? ' belt-moving' : ''}`} />
-      {shown.map((job, i) => (
+      {shown.map((job, index) => (
         <span
           key={job.id}
-          className={`conveyor-item${busy ? '' : ' item-idle'}`}
-          style={{
-            animationDuration: duration,
-            animationDelay: busy ? `${(i / SHOWN) * parseFloat(duration)}s` : undefined,
-          }}
+          className={`conveyor-item${busy ? '' : ' item-idle'}${index > 0 ? ` item-shift-${index}` : ''}`}
+          style={{ left: SLOTS[index] }}
         >
           <RobotIcon type={job.type} size={16} />
         </span>

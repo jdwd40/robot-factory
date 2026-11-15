@@ -28,7 +28,7 @@ export function ProductionLine({
   onSalvage,
 }: ProductionLineProps) {
   return (
-    <main className="line" aria-label="Production line">
+    <main className="line" aria-label="Production line" data-tour="line">
       {MACHINE_ORDER.map((id, i) => {
         const next = MACHINE_ORDER[i + 1];
         const upstreamActive = state.machines[id].state === 'processing';
@@ -62,7 +62,8 @@ function ShippingDock({ state }: { state: FactoryState }) {
   const recent = state.elapsed - state.stats.lastShipElapsed < 4 && state.stats.robotsShipped > 0;
   const rate = state.stats.rateEma * 3600;
   return (
-    <aside className={`dock${recent ? ' dock-active' : ''}`} aria-label="Shipping dock">
+    <aside className={`dock${recent ? ' dock-active' : ''}`} aria-label="Shipping dock" data-tour="dock">
+      <div key={`glint-${state.stats.robotsShipped}`} className="dock-glint" aria-hidden="true" />
       <div className="dock-lights" aria-hidden="true">
         <span />
         <span />

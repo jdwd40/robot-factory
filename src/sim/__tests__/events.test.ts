@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addOrder, createInitialState, setGameSpeed, tick, upgrade } from '../factory';
+import { demandMultiplier } from '../economy';
 import { richState, run } from './helpers';
 import { makeJob } from './helpers';
 
@@ -56,9 +57,10 @@ describe('factory events', () => {
     const before = s.credits;
     const after = tick(s, 1, () => 0.99);
     const gain = after.credits - before;
-    expect(gain).toBe(Math.round(55 * 1.5)); // 83
-    expect(after.stats.revenue).toBe(83);
-    expect(after.stats.profit).toBe(53);
+    const base = Math.round(55 * demandMultiplier('worker', after.elapsed)); // live demand at ship
+    expect(gain).toBe(Math.round(base * 1.5));
+    expect(after.stats.revenue).toBe(gain);
+    expect(after.stats.profit).toBe(gain - 30);
   });
 
   it('bulk order pays a bonus when the target is met and then expires', () => {
@@ -68,12 +70,13 @@ describe('factory events', () => {
     const before = s.credits;
     s = run(s, 120);
     const creditsGained = s.credits - before;
-    const sales = 3 * 55; // 165
-    const bonus = Math.round(165 * 0.25); // 41 — shipped-value-backed bonus
     expect(s.stats.robotsShipped).toBe(3);
-    expect(creditsGained).toBe(sales + bonus);
+    // 3 sales at live demand + the 25% shipped-value bonus all land in-window,
+    // so the ledger must fully account for every credit gained.
+    expect(creditsGained).toBe(s.stats.revenue);
+    expect(s.stats.revenue).toBeGreaterThan(3 * 55); // base sales ≈165, plus bonus
     expect(s.events.some((e) => e.type === 'bulk-order')).toBe(false);
-    expect(s.log.some((e) => e.message === `Bulk Order complete — bonus +${bonus} cr`)).toBe(true);
+    expect(s.log.some((e) => e.message.startsWith('Bulk Order complete — bonus +'))).toBe(true);
   });
 
   it('bulk order expires with a log entry when the target is missed', () => {

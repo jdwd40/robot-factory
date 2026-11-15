@@ -63,6 +63,19 @@ export const EMERGENCY_COOL_COST = 12;
 /** Machines hotter than this can be emergency-cooled. */
 export const EMERGENCY_COOL_MIN_HEAT = 0.6;
 
+/* ---------- Market demand ---------- */
+
+/** Oscillation amplitude of market demand as a fraction of base sale price. */
+export const DEMAND_AMPLITUDE = 0.15;
+/** Full demand cycle length in sim seconds (~3 min per swing). */
+export const DEMAND_PERIOD = 180;
+/** Phase offset per robot model, so price peaks never collide. */
+export const DEMAND_PHASE: Record<RobotId, number> = {
+  worker: 0,
+  explorer: (2 * Math.PI) / 3,
+  combat: (4 * Math.PI) / 3,
+};
+
 /* ---------- Chassis materials ---------- */
 
 export interface MaterialConfig {

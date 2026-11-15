@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MATERIAL_CONFIG } from '../config';
-import { materialMet, orderCost, saleValueFor, stageDuration } from '../economy';
+import { materialMet, orderCost, saleValueFor, stageDuration, demandMultiplier } from '../economy';
 import {
   addOrder,
   createInitialState,
@@ -101,7 +101,7 @@ describe('materials', () => {
     };
     s = machineMidJob(s, 'finisher', makeJob('worker', { id: 7, serial: 3, costPaid: 41, material: 'alloy' }), 0.999);
     s = tick(s, 1, () => 0.99);
-    expect(s.stats.revenue).toBe(69);
+    expect(s.stats.revenue).toBe(Math.round(69 * demandMultiplier('worker', s.elapsed)));
     expect(s.stats.byMaterial.alloy).toBe(1);
     expect(s.stats.byMaterial.chrome).toBe(0);
   });
@@ -147,7 +147,7 @@ describe('materials', () => {
     s = run(s, 60);
     expect(s.stats.robotsShipped).toBe(2);
     expect(s.stats.byMaterial.alloy).toBe(2);
-    // Credits = start + alloy sale value × 2 (no breakdowns at rng 0.99).
-    expect(s.credits).toBe(startCredits + 2 * saleValueFor('worker', 1, 'alloy'));
+    // Money conservation: sales at live demand, no breakdowns at rng 0.99.
+    expect(s.credits).toBe(startCredits + s.stats.revenue);
   });
 });

@@ -16,7 +16,7 @@ export function FactoryControls({ state, onSetSpeed, onSetPaused, onReset }: Fac
     }
   };
   return (
-    <footer className="controls">
+    <footer className="controls" data-tour="controls">
       <div className="controls-group" role="group" aria-label="Game speed">
         <span className="controls-label">Game speed</span>
         {speeds.map((spd) => (

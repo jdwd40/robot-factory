@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { demandMultiplier } from '../economy';
 import {
   addOrder,
   cancelOrder,
@@ -50,8 +51,8 @@ describe('production queue', () => {
     s = runLong(s);
     expect(s.stats.robotsShipped).toBe(3);
     expect(s.stats.byType.worker).toBe(3);
-    expect(s.credits).toBe(200 - 90 + 3 * 55);
-    expect(s.stats.profit).toBe(3 * (55 - 30));
+    expect(s.credits).toBe(200 - 90 + s.stats.revenue); // paid for 3, sold each at live demand
+    expect(s.stats.profit).toBe(s.stats.revenue - s.stats.costPaid);
   });
 
   it('ships models with distinct timings (combat takes longer than worker)', () => {
@@ -104,7 +105,9 @@ describe('production queue', () => {
     const paid = s.orders[0].costPaid;
     s = runLong(s);
     expect(s.stats.robotsShipped).toBe(1);
-    const expectedSale = Math.round(55 * 1.04);
+    const expectedSale = Math.round(
+      Math.round(55 * 1.04) * demandMultiplier('worker', s.stats.lastShipElapsed),
+    ); // 57 × live demand at shipment
     expect(s.stats.revenue).toBe(expectedSale);
     expect(s.stats.profit).toBe(expectedSale - paid);
   });

@@ -436,6 +436,140 @@ body {
   border-radius: 4px;
   padding: 12px;
   min-height: 210px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Steam vents when a machine runs warm-to-hot. */
+.machine-vent {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.machine-vent i {
+  width: 5px;
+  height: 13px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(213, 219, 226, 0.5), transparent);
+  opacity: 0;
+  animation: vent-rise 1.7s ease-out infinite;
+}
+
+.machine-vent i:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.machine-vent i:nth-child(3) {
+  animation-delay: 1s;
+}
+
+@keyframes vent-rise {
+  0% {
+    transform: translateY(4px) scaleX(1);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-20px) scaleX(1.7);
+    opacity: 0;
+  }
+}
+
+/* Hazard wash tied to the machine's real state. */
+.machine-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.glow-hot {
+  box-shadow: inset 0 0 18px rgba(232, 163, 61, 0.25);
+  animation: glow-pulse 1.8s ease-in-out infinite;
+}
+
+.glow-overheat {
+  box-shadow: inset 0 0 26px rgba(232, 134, 90, 0.45);
+  animation: glow-pulse 0.7s ease-in-out infinite;
+}
+
+.glow-broken {
+  box-shadow: inset 0 0 28px rgba(217, 83, 79, 0.5);
+  animation: glow-pulse 0.5s ease-in-out infinite;
+}
+
+.glow-repair {
+  box-shadow: inset 0 0 20px rgba(232, 163, 61, 0.35);
+  animation: glow-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Shorting sparks on a broken machine. */
+.machine-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.machine-sparks i {
+  position: absolute;
+  bottom: 14%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+  animation: spark-flicker 1s ease-out infinite;
+  opacity: 0;
+}
+
+.machine-sparks i:nth-child(1) {
+  left: 20%;
+  animation-delay: 0.1s;
+}
+
+.machine-sparks i:nth-child(2) {
+  left: 52%;
+  animation-delay: 0.55s;
+}
+
+.machine-sparks i:nth-child(3) {
+  left: 76%;
+  animation-delay: 0.85s;
+}
+
+@keyframes spark-flicker {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
 }
 
 .machine-job {
@@ -490,7 +624,6 @@ body {
 .progress-fill {
   height: 100%;
   background: var(--amber);
-  transition: width 90ms linear;
 }
 
 .machine-job-meta {
@@ -889,27 +1022,36 @@ body {
 .conveyor-item {
   position: absolute;
   top: 50%;
-  left: 0;
   width: 16px;
   height: 16px;
   margin-top: -8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: item-travel 1.8s linear infinite;
-  opacity: 1;
+  animation: belt-arrive 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+
+/* Older queued units sit further back on the belt, so dim them by distance. */
+.conveyor-item.item-shift-1 {
+  opacity: 0.8;
+}
+
+.conveyor-item.item-shift-2 {
+  opacity: 0.65;
+}
+
+.conveyor-item.item-shift-3 {
+  opacity: 0.5;
 }
 
 .item-idle {
   opacity: 0.45;
 }
 
-@keyframes item-travel {
+@keyframes belt-arrive {
   from {
-    transform: translateX(2px);
-  }
-  to {
-    transform: translateX(66px);
+    transform: translateX(-160%);
+    opacity: 0;
   }
 }
 
@@ -946,6 +1088,34 @@ body {
   justify-content: center;
   gap: 8px;
   min-width: 170px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Light sweep across the dock each time a robot ships. */
+.dock-glint {
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent,
+    rgba(213, 219, 226, 0.14),
+    transparent
+  );
+  animation: glint-sweep 1.3s ease-out;
+  pointer-events: none;
+}
+
+@keyframes glint-sweep {
+  0% {
+    left: -60%;
+  }
+  100% {
+    left: 135%;
+  }
 }
 
 .dock h2 {
@@ -1008,21 +1178,25 @@ body {
   color: var(--green);
   font-weight: 700;
   font-size: 15px;
-  animation: payout-pop 1.6s ease-out;
+  animation: payout-float 1.5s ease-out forwards;
 }
 
-@keyframes payout-pop {
+@keyframes payout-float {
   0% {
-    transform: scale(1);
+    transform: translateY(8px);
     opacity: 0;
   }
-  20% {
-    transform: scale(1.15);
+  15% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(-2px);
     opacity: 1;
   }
   100% {
-    transform: scale(1);
-    opacity: 1;
+    transform: translateY(-12px);
+    opacity: 0;
   }
 }
 
@@ -1109,6 +1283,33 @@ body {
 
 .stat-profit {
   color: var(--green);
+}
+
+.demand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 5px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  vertical-align: middle;
+  border: 1px solid transparent;
+}
+
+.demand-up {
+  color: var(--green);
+  border-color: rgba(111, 191, 115, 0.4);
+  background: rgba(111, 191, 115, 0.1);
+}
+
+.demand-down {
+  color: var(--red);
+  border-color: rgba(217, 83, 79, 0.4);
+  background: rgba(217, 83, 79, 0.1);
 }
 
 .order-btn {
@@ -2016,4 +2217,142 @@ kbd {
   margin: 12px 0 0;
   font-size: 12px;
   color: var(--text-dim);
+}
+
+/* ---------- Guided tour ---------- */
+
+.tour-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.tour-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 12, 16, 0.72);
+  z-index: 60;
+  pointer-events: none;
+}
+
+.tour-spotlight {
+  position: fixed;
+  z-index: 60;
+  border: 2px solid var(--amber);
+  border-radius: 8px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 4px rgba(232, 163, 61, 0.28),
+    0 0 0 9999px rgba(8, 12, 16, 0.72);
+  animation: tour-pop 180ms ease-out;
+}
+
+.tour-tooltip {
+  position: fixed;
+  z-index: 61;
+  width: min(360px, calc(100vw - 24px));
+  background: var(--bg-panel);
+  border: 1px solid var(--steel-light);
+  border-top: 3px solid var(--amber);
+  border-radius: 6px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  padding: 12px 16px 12px;
+}
+
+.tour-tooltip--center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tour-tooltip-pop {
+  animation: tour-pop 180ms ease-out;
+}
+
+.tour-step-label {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tour-tooltip h3 {
+  margin: 6px 0 6px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.tour-tooltip p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--steel);
+}
+
+.tour-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tour-skip {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--steel);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.tour-skip:hover {
+  color: var(--text);
+  border-color: var(--steel-light);
+}
+
+.tour-next {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--amber);
+  background: rgba(232, 163, 61, 0.14);
+  color: var(--amber);
+  cursor: pointer;
+}
+
+.tour-next:hover:not(:disabled) {
+  background: rgba(232, 163, 61, 0.26);
+}
+
+@keyframes tour-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spotlight,
+  .tour-tooltip-pop {
+    animation: none;
+  }
 }

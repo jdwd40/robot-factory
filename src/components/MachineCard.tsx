@@ -102,6 +102,32 @@ export function MachineCard({
       </header>
 
       <div className="machine-workspace">
+        {m.state === 'processing' && m.heat >= HEAT_WARM_AT && (
+          <div className="machine-vent" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+        )}
+        {m.state === 'processing' && m.heat >= HEAT_HOT_AT && (
+          <div className="machine-glow glow-hot" aria-hidden="true" />
+        )}
+        {m.state === 'overheated' && (
+          <div className="machine-glow glow-overheat" aria-hidden="true" />
+        )}
+        {m.state === 'broken' && (
+          <>
+            <div className="machine-glow glow-broken" aria-hidden="true" />
+            <div className="machine-sparks" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </div>
+          </>
+        )}
+        {m.state === 'repairing' && (
+          <div className="machine-glow glow-repair" aria-hidden="true" />
+        )}
         <div className={`machine-job${down ? ' machine-job-down' : ''}`}>
           {job ? (
             <>
@@ -135,7 +161,7 @@ export function MachineCard({
           )}
         </div>
 
-        <div className={`machine-heat ${heatClass(m.heat)}`}>
+        <div className={`machine-heat ${heatClass(m.heat)}`} data-tour={id === 'fabricator' ? 'heat' : undefined}>
           <span className="machine-heat-label">
             {m.heat >= HEAT_HOT_AT ? 'HOT' : m.heat >= HEAT_WARM_AT ? 'WARM' : 'COOL'} {heatPct}%
           </span>
@@ -246,7 +272,7 @@ export function MachineCard({
                 : 'Boost throughput, trade reliability'}
             </p>
           </div>
-          <div className="machine-upgrades">
+          <div className="machine-upgrades" data-tour={id === 'fabricator' ? 'upgrades' : undefined}>
             {UPGRADE_TRACKS_ORDER.map((track) => {
               const lvl = m.upgrades[track];
               const t = UPGRADE_TRACKS[id][track];

@@ -8,7 +8,9 @@ import { OrdersPanel } from './components/OrdersPanel';
 import { ProductionLine } from './components/ProductionLine';
 import { ReportModal } from './components/ReportModal';
 import { StatsPanel } from './components/StatsPanel';
+import { Tour } from './components/Tour';
 import { useFactory } from './hooks/useFactory';
+import { hasSeenTour } from './utils/tutorial';
 
 export default function App() {
   const {
@@ -31,10 +33,12 @@ export default function App() {
 
   const [showHelp, setShowHelp] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [tourActive, setTourActive] = useState(() => !hasSeenTour());
 
   // Keyboard shortcuts: 1/2/3 game speed, Space pause/resume, ? help.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (tourActive) return; // let the tour own the keyboard while it is up
       if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
       if (e.key === '1') setSpeed(1);
       else if (e.key === '2') setSpeed(2);
@@ -47,7 +51,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setSpeed, setPaused, state.settings.paused]);
+  }, [setSpeed, setPaused, state.settings.paused, tourActive]);
 
   return (
     <div className="app">
@@ -80,7 +84,16 @@ export default function App() {
         <EventLog state={state} />
       </div>
       <FactoryControls state={state} onSetSpeed={setSpeed} onSetPaused={setPaused} onReset={reset} />
-      {showHelp && <HelpOverlay onClose={() => setShowHelp(false)} />}
+      {tourActive && <Tour state={state} onClose={() => setTourActive(false)} />}
+      {showHelp && (
+        <HelpOverlay
+          onClose={() => setShowHelp(false)}
+          onStartTour={() => {
+            setShowHelp(false);
+            setTourActive(true);
+          }}
+        />
+      )}
       {showReport && <ReportModal state={state} onClose={() => setShowReport(false)} />}
     </div>
   );

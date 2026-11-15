@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addOrder, buyOutEvent, cancelOrder, emergencyCool, repair, salvage, tick, upgrade } from '../factory';
+import { demandMultiplier } from '../economy';
 import { MACHINE_ORDER, MAX_LOG_ENTRIES, SALVAGE_FRACTION } from '../config';
 import { mulberry32 } from '../random';
 import type { FactoryState } from '../types';
@@ -110,7 +111,9 @@ describe('long-run integrity', () => {
     s = run(s, 240, 1, () => 0.99); // no events or breakdowns: pure deterministic pipeline
     expect(s.stats.robotsShipped).toBe(10);
     expect(s.stats.lastShipElapsed).toBeGreaterThan(0);
-    expect(s.stats.lastShipValue).toBe(55);
+    expect(s.stats.lastShipValue).toBe(
+      Math.round(55 * demandMultiplier('worker', s.stats.lastShipElapsed)),
+    );
   });
 
   it('refunds, salvage, buyouts and cooling are all tracked so the money identity holds', () => {

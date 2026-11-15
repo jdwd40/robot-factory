@@ -6,7 +6,14 @@ import {
   ROBOT_ORDER,
   UPGRADE_TRACKS,
 } from '../sim/config';
-import { materialBlocks, materialMet, orderCost, robotBuildTime, saleValueFor } from '../sim/economy';
+import {
+  demandMultiplier,
+  materialBlocks,
+  materialMet,
+  orderCost,
+  robotBuildTime,
+  saleValueFor,
+} from '../sim/economy';
 import type { FactoryState, Job, MaterialId, RobotId } from '../sim/types';
 import { RobotIcon } from './RobotIcon';
 
@@ -48,7 +55,7 @@ export function OrdersPanel({
     <section className="panel orders-panel" aria-label="Orders and queue">
       <h2 className="panel-title">Order Book</h2>
 
-      <div className="material-picker" role="group" aria-label="Chassis material">
+      <div className="material-picker" role="group" aria-label="Chassis material" data-tour="material">
         {MATERIAL_ORDER.map((mid) => {
           const cfg = MATERIAL_CONFIG[mid];
           const met = materialMet(mid, state.machines);
@@ -83,7 +90,8 @@ export function OrdersPanel({
         {ROBOT_ORDER.map((type) => {
           const cfg = ROBOT_CONFIG[type];
           const cost = orderCost(type, fabSpecial, material);
-          const sale = saleValueFor(type, finSpecial, material);
+          const demand = demandMultiplier(type, state.elapsed);
+          const sale = Math.round(saleValueFor(type, finSpecial, material) * demand);
           const build = Math.round(robotBuildTime(type) * MATERIAL_CONFIG[material].timeMult);
           const met = cfg.requires.every(
             (r) => state.machines[r.machine].upgrades[r.track] >= r.level,
@@ -96,6 +104,8 @@ export function OrdersPanel({
           const orderHint = queueFull
             ? `queue full (${MAX_ORDER_QUEUE} limit)` 
             : !affordable ? 'insufficient credits' : '';
+          const demandPct = Math.round((demand - 1) * 100);
+          const rising = demandMultiplier(type, state.elapsed + 1) > demand;
           return (
             <div className={`catalog-row${met ? '' : ' catalog-locked'}`} key={type}>
               <div className="catalog-robot">
@@ -117,7 +127,16 @@ export function OrdersPanel({
                 </div>
                 <div>
                   <span className="catalog-key">Sale</span>
-                  <span className="catalog-val">{sale} cr</span>
+                  <span className="catalog-val">
+                    {sale} cr
+                    <span
+                      className={`demand-badge ${demand >= 1 ? 'demand-up' : 'demand-down'}`}
+                      title={`Market demand ${demand >= 1 ? 'high' : 'low'}${rising ? ' and rising' : ' and falling'} — paid when the robot ships, not when ordered`}
+                    >
+                      {demand >= 1 ? '▲' : '▼'} {demandPct > 0 ? '+' : ''}
+                      {demandPct}%
+                    </span>
+                  </span>
                 </div>
                 <div>
                   <span className="catalog-key">Profit</span>
@@ -132,6 +151,7 @@ export function OrdersPanel({
                 <button
                   type="button"
                   className="order-btn"
+                  data-tour={type === 'worker' ? 'order-worker' : undefined}
                   disabled={!affordable || queueFull}
                   onClick={() => onAddOrder(type)}
                 >
@@ -167,7 +187,7 @@ export function OrdersPanel({
             <div className="queue-empty">Queue is empty — order a robot above.</div>
           )}
       </div>
-      <div className="queue-foot">Profit shown per unit at current upgrades & material.</div>
+      <div className="queue-foot">Profit shown per unit at current upgrades, material & live market demand.</div>
     </section>
   );
 }

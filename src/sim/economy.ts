@@ -1,12 +1,28 @@
 import {
   BREAKDOWN_CONFIG,
   DEFAULT_MATERIAL,
+  DEMAND_AMPLITUDE,
+  DEMAND_PERIOD,
+  DEMAND_PHASE,
   MACHINE_CONFIG,
   MATERIAL_CONFIG,
   ROBOT_CONFIG,
   UPGRADE_TRACKS,
 } from './config';
 import type { BreakdownType, MachineId, MaterialId, RobotId, UpgradeTrack } from './types';
+
+/**
+ * Live market-demand multiplier for a robot model at a given sim time.
+ * Purely a function of elapsed time: deterministic, no saved state. Peaks are
+ * phase-shifted per model so "what to build right now" actually changes.
+ */
+export function demandMultiplier(type: RobotId, elapsed: number): number {
+  return (
+    1 +
+    DEMAND_AMPLITUDE *
+      Math.sin((2 * Math.PI * elapsed) / DEMAND_PERIOD + DEMAND_PHASE[type])
+  );
+}
 
 /** Full nominal order cost before material efficiency: material + labour. */
 export function robotCost(type: RobotId): number {

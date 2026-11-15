@@ -34,6 +34,7 @@ import {
 import {
   breakdownRepairTime,
   capacityFor,
+  demandMultiplier,
   materialMet,
   orderCost,
   processFailureRisk,
@@ -185,7 +186,9 @@ function shipRobot(
   if (!job) return;
   const s = next.stats;
   const qualityLevel = next.machines.finisher.upgrades.special;
-  let value = saleValueFor(job.type, qualityLevel, job.material);
+  let value = Math.round(
+    saleValueFor(job.type, qualityLevel, job.material) * demandMultiplier(job.type, next.elapsed),
+  );
   if (flags.perfectAssembly) value = Math.round(value * flags.assemblyBonus);
 
   next.credits += value;
